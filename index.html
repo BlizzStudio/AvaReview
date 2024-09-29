@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Code Review</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Handlee&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            overflow: hidden; /* Prevent scrolling */
+            font-family: 'Handlee', cursive; /* Apply Handlee font */
+            transition: background-color 0.5s ease; /* Smooth background transition */
+        }
+
+        .result {
+            display: none; /* Initially hide the result */
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .loading {
+            display: none; /* Initially hide loading spinner */
+        }
+
+        /* Custom styles for the toggle button */
+        .theme-toggle {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Button hover effects */
+        .button-hover:hover {
+            background-color: #4a8aef;
+            transform: scale(1.05);
+        }
+
+        /* Input focus effect */
+        input:focus,
+        textarea:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #4a8aef;
+        }
+
+        /* Sidebar styles */
+        .sidebar {
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-visible {
+            transform: translateX(0);
+        }
+
+        /* Navbar styles */
+        .nav-item:hover {
+            background-color: rgba(74, 138, 239, 0.1);
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300 flex">
+    <!-- Sidebar for Mobile -->
+    <div id="sidebar" class="bg-white dark:bg-gray-800 h-full w-64 p-5 sidebar sidebar-hidden md:hidden fixed z-50">
+        <h2 class="text-xl font-bold mb-4">Menu</h2>
+        <ul>
+            <li class="mb-2 nav-item"><a href="#" class="flex items-center"><span class="material-icons mr-2">home</span>Home</a></li>
+            <li class="mb-2 nav-item"><a href="#" class="flex items-center"><span class="material-icons mr-2">info</span>About</a></li>
+            <li class="mb-2 nav-item"><a href="#" class="flex items-center"><span class="material-icons mr-2">contact_mail</span>Contact</a></li>
+            <li class="mb-2 nav-item"><a href="#" class="flex items-center"><span class="material-icons mr-2">help</span>Help</a></li>
+        </ul>
+    </div>
+
+    <div class="flex-1 flex flex-col">
+        <!-- Navbar for Desktop -->
+        <nav class="bg-white dark:bg-gray-800 p-5 flex justify-between items-center md:flex hidden">
+            <h1 class="text-2xl font-bold">AI-Powered Code Review</h1>
+            <div>
+                <ul class="flex space-x-4">
+                    <li class="nav-item"><a href="#" class="flex items-center"><span class="material-icons mr-1">home</span>Home</a></li>
+                    <li class="nav-item"><a href="#" class="flex items-center"><span class="material-icons mr-1">info</span>About</a></li>
+                    <li class="nav-item"><a href="#" class="flex items-center"><span class="material-icons mr-1">contact_mail</span>Contact</a></li>
+                    <li class="nav-item"><a href="#" class="flex items-center"><span class="material-icons mr-1">help</span>Help</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <div class="flex items-center justify-between w-full p-5 md:hidden">
+            <h1 class="text-2xl font-bold">Ava Review</h1>
+            <button id="toggleSidebar" class="bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white py-2 px-4 rounded-lg flex items-center">
+                <span class="material-icons mr-2">menu</span>
+            </button>
+        </div>
+
+        <div class="flex items-center justify-center w-full h-full p-5 flex-col">
+            <button id="toggleTheme" class="mb-4 bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-white py-2 px-4 rounded-lg theme-toggle hover:bg-gray-400 dark:hover:bg-gray-600 transition duration-300 flex items-center">
+                <span class="material-icons mr-2">toggle_on</span> Toggle 
+            </button>
+
+            <textarea id="codeInput" class="w-full h-48 p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300" placeholder="Paste your code here..."></textarea>
+
+            <div class="flex justify-between items-center w-full mt-4">
+                <button id="reviewButton" class="flex items-center button-hover bg-blue-500 text-white py-2 px-4 rounded-lg shadow-lg transition duration-300">
+                    <span class="material-icons mr-2">check_circle</span> Review Code
+                    <span class="ml-2 loading hidden"><svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 100 8v4a8 8 0 01-8-8z"></path></svg></span>
+                </button>
+            </div>
+
+            <div id="result" class="result mt-4 p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 w-full fade-in shadow-lg">
+                <h2 class="font-bold">Feedback:</h2>
+                <p id="feedbackText" class="mt-2"></p>
+            </div>
+
+            <div class="mt-6 w-full">
+                <h2 class="text-lg font-bold mb-2">Tips for Better Coding:</h2>
+                <ul class="list-disc pl-5">
+                    <li>Keep your functions small and focused.</li>
+                    <li>Use meaningful variable names.</li>
+                    <li>Document your code thoroughly.</li>
+                    <li>Refactor your code regularly.</li>
+                    <li>Write tests to ensure code reliability.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("reviewButton").addEventListener("click", () => {
+            const code = document.getElementById("codeInput").value;
+
+            if (!code) {
+                alert("Please enter some code.");
+                return;
+            }
+
+            // Show loading spinner
+            const loadingSpinner = document.querySelector(".loading");
+            loadingSpinner.classList.remove("hidden");
+
+            // Simulate a code review process
+            setTimeout(() => {
+                const feedback = generateFakeFeedback(code);
+                document.getElementById("feedbackText").innerText = feedback;
+                document.getElementById("result").style.display = "block"; // Show the feedback
+                document.getElementById("result").classList.add("fade-in"); // Add fade-in effect
+
+                // Hide loading spinner
+                loadingSpinner.classList.add("hidden");
+            }, 1500); // Simulate network delay
+        });
+
+        function generateFakeFeedback(code) {
+            return `
+                Your code has ${Math.floor(Math.random() * 5) + 1} issues that can be improved:
+                1. Consider optimizing the loops.
+                2. Check for proper error handling.
+                3. Ensure you follow the coding standards.
+                4. Review the variable naming conventions.
+                5. Look into the performance of your functions.
+            `;
+        }
+
+        // Toggle Dark/Light Mode
+        document.getElementById("toggleTheme").addEventListener("click", () => {
+            document.body.classList.toggle("dark");
+
+            // Change button text based on theme
+            const themeButton = document.getElementById("toggleTheme");
+            if (document.body.classList.contains("dark")) {
+                themeButton.innerHTML = '<span class="material-icons mr-2">toggle_off</span> Toggle Light Mode';
+            } else {
+                themeButton.innerHTML = '<span class="material-icons mr-2">toggle_on</span> Toggle Dark Mode';
+            }
+        });
+
+        // Toggle Sidebar
+        document.getElementById("toggleSidebar").addEventListener("click", () => {
+            const sidebar = document.getElementById("sidebar");
+            sidebar.classList.toggle("sidebar-hidden");
+            sidebar.classList.toggle("sidebar-visible");
+        });
+    </script>
+</body>
+
+</html>
